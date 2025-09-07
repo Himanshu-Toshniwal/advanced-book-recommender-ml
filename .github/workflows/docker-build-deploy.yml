@@ -94,9 +94,10 @@ jobs:
         output: 'trivy-results.sarif'
     
     - name: 📊 Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
+      continue-on-error: true
 
   build-and-push:
     name: 🐳 Build & Push Docker Image
@@ -147,9 +148,10 @@ jobs:
         output: 'trivy-image-results.sarif'
     
     - name: 📊 Upload Trivy image scan results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-image-results.sarif'
+      continue-on-error: true
 
   deploy:
     name: 🚀 Deploy Application
@@ -166,36 +168,3 @@ jobs:
         echo "🎉 Deploying Book Recommender System to production..."
         echo "📦 Image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
         echo "✅ Deployment completed successfully!"
-    
-    - name: 📧 Notify Deployment Success
-      uses: 8398a7/action-slack@v3
-      with:
-        status: success
-        text: "🎉 Book Recommender System deployed successfully!"
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      if: success()
-    
-    - name: 📧 Notify Deployment Failure
-      uses: 8398a7/action-slack@v3
-      with:
-        status: failure
-        text: "❌ Book Recommender System deployment failed!"
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      if: failure()
-
-  cleanup:
-    name: 🧹 Cleanup Old Images
-    runs-on: ubuntu-latest
-    needs: deploy
-    if: always()
-    
-    steps:
-    - name: 🗑️ Delete Old Docker Images
-      uses: actions/delete-package-versions@v4
-      with:
-        package-name: ${{ env.IMAGE_NAME }}
-        package-type: container
-        min-versions-to-keep: 5
-        delete-only-untagged-versions: true
