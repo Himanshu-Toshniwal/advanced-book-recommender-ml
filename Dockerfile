@@ -1,23 +1,18 @@
-FROM python:3.10-slim         
-WORKDIR /app                  
-ENV PYTHONDONTWRITEBYTECODE=1  
-ENV PYTHONUNBUFFERED=1        
+FROM python:3.10-slim
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# System dependencies
-RUN apt-get update && apt-get install -y gcc g++  
+RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies  
-COPY requirements.txt .        # ✅ Copy requirements first
-RUN pip install --no-cache-dir -r requirements.txt  # ✅ Install deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Application code
-COPY . .                       # ✅ Copy all files
+COPY . .
 
-# Security
-RUN useradd --create-home --shell /bin/bash app  # ✅ Non-root user
-USER app                       # ✅ Switch to app user
+RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
+USER app
 
-# Runtime
-EXPOSE 8000                    # ✅ Port exposure
-HEALTHCHECK ...                # ✅ Health monitoring
-CMD ["python", "src/main.py"]  # ✅ Start application
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD python -c "import sys; sys.exit(0)"
+CMD ["python", "src/main.py"]
