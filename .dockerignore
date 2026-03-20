@@ -56,3 +56,7 @@ tests/
 # Temporary files
 *.tmp
 *.temp
+
+# Dataset CSVs – generated at build time by download_data.py
+# Real Kaggle CSVs can be large (270MB+), mount via volume instead
+data/*.csv
