@@ -10,7 +10,7 @@ env:
   IMAGE_NAME: book-recommender-system
 
 jobs:
-  # ── 1. TEST ────────────────────────────────────────────────────────────────
+  # ── 1. TEST ──────────────────────────────────────────────────────────────
   test:
     name: 🧪 Run Tests
     runs-on: ubuntu-latest
@@ -34,45 +34,51 @@ jobs:
 
     - name: 🧪 Run Tests
       env:
-        MPLBACKEND: Agg        # no display on CI runner
+        MPLBACKEND: Agg
       run: |
         mkdir -p tests
-        cat > tests/test_basic.py << 'EOF'
-        import sys, os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+        # Write test file without indentation issues
+        python - << 'PYEOF'
+import os
+content = '''import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-        def test_imports():
-            import pandas, numpy, sklearn, matplotlib
-            assert True
+def test_imports():
+    import pandas, numpy, sklearn, matplotlib
+    assert True
 
-        def test_data_loader():
-            from download_data import DATA_DIR, REQUIRED_FILES
-            for f in REQUIRED_FILES:
-                assert os.path.exists(os.path.join(DATA_DIR, f)), f"{f} missing"
+def test_data_loader():
+    from download_data import DATA_DIR, REQUIRED_FILES
+    for f in REQUIRED_FILES:
+        assert os.path.exists(os.path.join(DATA_DIR, f)), f"{f} missing"
 
-        def test_recommender_init():
-            from main import DataLoader, BookRecommenderSystem
-            books, ratings, users = DataLoader().load()
-            rec = BookRecommenderSystem(books, ratings, users)
-            assert len(rec.books) > 0
+def test_recommender_init():
+    from main import DataLoader, BookRecommenderSystem
+    books, ratings, users = DataLoader().load()
+    rec = BookRecommenderSystem(books, ratings, users)
+    assert len(rec.books) > 0
 
-        def test_popular_books():
-            from main import DataLoader, BookRecommenderSystem
-            books, ratings, users = DataLoader().load()
-            rec = BookRecommenderSystem(books, ratings, users)
-            popular = rec.popular_books(5)
-            assert len(popular) <= 5
+def test_popular_books():
+    from main import DataLoader, BookRecommenderSystem
+    books, ratings, users = DataLoader().load()
+    rec = BookRecommenderSystem(books, ratings, users)
+    popular = rec.popular_books(5)
+    assert len(popular) <= 5
 
-        def test_search():
-            from main import DataLoader, BookRecommenderSystem
-            books, ratings, users = DataLoader().load()
-            rec = BookRecommenderSystem(books, ratings, users)
-            results = rec.search('harry', 'title')
-            assert isinstance(results, object)
-        EOF
+def test_search():
+    from main import DataLoader, BookRecommenderSystem
+    books, ratings, users = DataLoader().load()
+    rec = BookRecommenderSystem(books, ratings, users)
+    results = rec.search("harry", "title")
+    assert results is not None
+'''
+with open('tests/test_basic.py', 'w') as f:
+    f.write(content)
+print("Test file written.")
+PYEOF
         python -m pytest tests/ -v --tb=short
 
-  # ── 2. BUILD & PUSH ────────────────────────────────────────────────────────
+  # ── 2. BUILD & PUSH ──────────────────────────────────────────────────────
   build-and-push:
     name: 🐳 Build & Push Docker Image
     runs-on: ubuntu-latest
@@ -97,22 +103,23 @@ jobs:
       with:
         context: .
         push: true
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         cache-from: type=gha
         cache-to: type=gha,mode=max
         tags: |
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  # ── 3. DEPLOY ──────────────────────────────────────────────────────────────
+  # ── 3. DEPLOY ────────────────────────────────────────────────────────────
   deploy:
     name: 🚀 Deploy
     runs-on: ubuntu-latest
     needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
     - name: 🚀 Deploy to Production
       run: |
-        echo "✅ Image pushed: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
-        echo "🔖 SHA tag     : ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        echo "✅ Image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+        echo "🔖 SHA  : ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
         echo "🎉 Deployment complete!"

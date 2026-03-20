@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Pre-generate sample data so container works without Kaggle credentials
-RUN echo "n" | python src/download_data.py
+# Pre-generate sample data (non-interactive, picks 'n' via EOFError fallback)
+RUN python src/download_data.py < /dev/null || true
 
 RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
 USER app
